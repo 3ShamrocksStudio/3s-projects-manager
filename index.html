@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en" data-mode="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0c1117">
+<meta name="description" content="3S Projects Manager — every 3Shamrocks Studio project, its pipeline stage, progress, and exactly what's waiting on Dave. Auto-refreshing.">
+<title>3S Projects Manager</title>
+<link rel="icon" href="assets/3shamrocks.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ===== Tokens — inherited from the 3S Design System (house brand) ===== */
+  :root{
+    --font-display:"Space Grotesk",system-ui,sans-serif;
+    --font-body:"Inter",system-ui,-apple-system,sans-serif;
+    --font-mono:"JetBrains Mono",ui-monospace,monospace;
+
+    --brand-300:#9a8ee4; --brand-400:#7a6bd8; --brand-500:#5f4fcc; --brand-600:#4f41b8;
+    --shamrock:#52cc7a; --shamrock-light:#7cfc90; --shamrock-dark:#18895b;
+
+    /* pipeline stage palette (distinct, AA on both themes) */
+    --st-concept:#7c8aa3; --st-design:#9a8ee4; --st-build:#f5c451;
+    --st-test:#38bdf8;   --st-deploy:#fb7185;  --st-live:#52cc7a;
+
+    --radius:18px; --radius-sm:12px; --radius-xs:9px; --pill:999px;
+    --maxw:1240px;
+    --ease:cubic-bezier(.2,0,0,1);
+    font-synthesis:none;
+  }
+  /* dark (default) */
+  html[data-mode="dark"]{
+    color-scheme:dark;
+    --bg:#0a0e14; --bg-grad1:rgba(82,204,122,.10); --bg-grad2:rgba(95,79,204,.16);
+    --surface:#121a24; --surface-2:#17222f; --surface-3:#1d2a39;
+    --border:rgba(255,255,255,.08); --border-strong:rgba(255,255,255,.15);
+    --track:rgba(255,255,255,.09);
+    --text:#eef2f6; --text-dim:#a3b2c2; --text-faint:#7286;
+    --text-faint:#73849a;
+    --high:#ff6b6b; --high-bg:rgba(255,107,107,.12); --high-bd:rgba(255,107,107,.32);
+    --med:#f5c451;  --med-bg:rgba(245,196,81,.12);  --med-bd:rgba(245,196,81,.30);
+    --low:#52cc7a;  --low-bg:rgba(82,204,122,.10);  --low-bd:rgba(82,204,122,.30);
+    --accent:var(--brand-300); --accent-soft:rgba(122,107,216,.16);
+    --shadow:0 12px 30px rgba(0,0,0,.45),0 3px 8px rgba(0,0,0,.3);
+    --logo-display:block;
+  }
+  /* light */
+  html[data-mode="light"]{
+    color-scheme:light;
+    --bg:#f4f6f9; --bg-grad1:rgba(82,204,122,.14); --bg-grad2:rgba(95,79,204,.12);
+    --surface:#ffffff; --surface-2:#f7f9fc; --surface-3:#eef2f7;
+    --border:rgba(20,30,45,.10); --border-strong:rgba(20,30,45,.18);
+    --track:rgba(20,30,45,.10);
+    --text:#16202c; --text-dim:#4a5a6c; --text-faint:#76879a;
+    --high:#d6403f; --high-bg:rgba(214,64,63,.08); --high-bd:rgba(214,64,63,.28);
+    --med:#b06f00;  --med-bg:rgba(176,111,0,.08);  --med-bd:rgba(176,111,0,.26);
+    --low:#18895b;  --low-bg:rgba(24,137,91,.08);  --low-bd:rgba(24,137,91,.26);
+    --accent:var(--brand-600); --accent-soft:rgba(95,79,204,.10);
+    --shadow:0 10px 26px rgba(20,30,45,.10),0 2px 6px rgba(20,30,45,.06);
+    --logo-display:block;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    font-family:var(--font-body); color:var(--text); line-height:1.5;
+    background:
+      radial-gradient(1100px 620px at 8% -10%, var(--bg-grad1), transparent 60%),
+      radial-gradient(1000px 560px at 100% -6%, var(--bg-grad2), transparent 58%),
+      var(--bg);
+    background-attachment:fixed;
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+    min-height:100vh; padding:clamp(18px,3.5vw,40px) clamp(14px,4vw,30px) 70px;
+  }
+  .wrap{max-width:var(--maxw);margin:0 auto}
+  a{color:inherit}
+  button{font-family:inherit;cursor:pointer}
+
+  /* ===================== Header ===================== */
+  .topbar{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;flex-wrap:wrap}
+  .eyebrow{
+    display:inline-flex;align-items:center;gap:8px;
+    font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--shamrock-light);background:var(--low-bg);
+    border:1px solid var(--low-bd);padding:6px 12px;border-radius:var(--pill);
+  }
+  html[data-mode="light"] .eyebrow{color:var(--shamrock-dark)}
+  .eyebrow .pulse{width:7px;height:7px;border-radius:50%;background:currentColor;
+    box-shadow:0 0 0 0 currentColor;animation:pulse 2.6s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(82,204,122,.5)}70%{box-shadow:0 0 0 9px rgba(82,204,122,0)}100%{box-shadow:0 0 0 0 rgba(82,204,122,0)}}
+  h1{font-family:var(--font-display);font-size:clamp(30px,6vw,50px);font-weight:700;
+    letter-spacing:-.02em;line-height:1.04;margin-top:14px}
+  .sub{color:var(--text-dim);font-size:clamp(15px,3.2vw,17px);margin-top:9px;max-width:62ch}
+
+  .controls{display:flex;align-items:center;gap:10px}
+  .iconbtn{
+    display:inline-flex;align-items:center;gap:8px;background:var(--surface);
+    border:1px solid var(--border);color:var(--text-dim);border-radius:var(--pill);
+    padding:9px 14px;font-size:13px;font-weight:600;transition:.18s var(--ease);
+  }
+  .iconbtn:hover{border-color:var(--border-strong);color:var(--text);transform:translateY(-1px)}
+
+  .meta{display:flex;flex-wrap:wrap;gap:9px 16px;margin-top:18px;align-items:center}
+  .stamp{font-size:13px;color:var(--text-faint)}
+  .stamp b{color:var(--text-dim);font-weight:600}
+  .livechip{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-dim);
+    background:var(--surface);border:1px solid var(--border);padding:5px 11px;border-radius:var(--pill)}
+  .livechip .dot{width:7px;height:7px;border-radius:50%;background:var(--shamrock);animation:pulse 2.6s infinite}
+
+  /* ===================== Needs Dave Now ===================== */
+  .alert{
+    margin:26px 0 8px;background:linear-gradient(180deg,var(--high-bg),transparent);
+    border:1px solid var(--high-bd);border-radius:var(--radius);padding:18px 20px;
+  }
+  .alert-head{display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+  .alert-head .ic{font-size:20px;line-height:1}
+  .alert-head h2{font-family:var(--font-display);font-size:18px;font-weight:600;letter-spacing:-.01em}
+  .alert-head .n{font-weight:700;color:var(--high)}
+  .alert-head .when{margin-left:auto;font-size:12.5px;color:var(--text-faint)}
+  .alert-list{display:flex;flex-wrap:wrap;gap:9px;margin-top:14px}
+  .needchip{
+    display:inline-flex;align-items:center;gap:9px;background:var(--surface);
+    border:1px solid var(--border);border-radius:var(--pill);padding:8px 13px 8px 11px;
+    font-size:13px;color:var(--text);transition:.16s var(--ease);text-align:left;
+  }
+  .needchip:hover{border-color:var(--border-strong);transform:translateY(-1px)}
+  .needchip .pri{width:9px;height:9px;border-radius:50%;flex:none}
+  .needchip .pri.high{background:var(--high)} .needchip .pri.med{background:var(--med)} .needchip .pri.low{background:var(--low)}
+  .needchip b{font-weight:600} .needchip .act{color:var(--text-dim);font-weight:400}
+  .allclear{font-size:14px;color:var(--text-dim);margin-top:10px}
+
+  /* section label */
+  .seclabel{display:flex;align-items:baseline;gap:10px;margin:34px 2px 16px}
+  .seclabel h2{font-family:var(--font-display);font-size:15px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text-dim)}
+  .seclabel .rule{flex:1;height:1px;background:var(--border)}
+
+  /* ===================== Grid + Cards ===================== */
+  .grid{display:grid;gap:18px;grid-template-columns:repeat(auto-fill,minmax(360px,1fr))}
+  .card{
+    position:relative;background:var(--surface);border:1px solid var(--border);
+    border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);
+    transition:border-color .18s var(--ease),transform .18s var(--ease);
+    display:flex;flex-direction:column;gap:16px;scroll-margin-top:20px;
+  }
+  .card:hover{border-color:var(--border-strong);transform:translateY(-2px)}
+  .card.flash{animation:flash 2.2s var(--ease)}
+  @keyframes flash{0%{box-shadow:0 0 0 0 var(--accent-soft),var(--shadow)}40%{box-shadow:0 0 0 4px var(--accent-soft),var(--shadow)}100%{box-shadow:0 0 0 0 transparent,var(--shadow)}}
+
+  .card-head{display:flex;gap:16px;align-items:flex-start}
+  .ch-text{flex:1;min-width:0}
+  .cat{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-faint)}
+  .cname{font-family:var(--font-display);font-size:19px;font-weight:600;letter-spacing:-.01em;margin-top:3px;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .newbadge{font-size:10px;font-weight:700;letter-spacing:.08em;color:#05140b;background:var(--shamrock-light);
+    padding:2px 7px;border-radius:var(--pill);text-transform:uppercase}
+  .cstatus{font-size:13px;color:var(--text-dim);margin-top:5px}
+
+  /* donut */
+  .donut-wrap{flex:none;width:104px;height:104px;position:relative}
+  .donut{width:100%;height:100%;border-radius:50%;
+    -webkit-mask:radial-gradient(farthest-side,transparent 61%,#000 62%);
+    mask:radial-gradient(farthest-side,transparent 61%,#000 62%)}
+  .donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+  .donut-center .pct{font-family:var(--font-display);font-size:23px;font-weight:700;letter-spacing:-.02em;line-height:1}
+  .donut-center .lbl{font-size:9.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-faint);margin-top:3px}
+
+  /* pipeline rail */
+  .rail{display:flex;align-items:flex-start;gap:0;margin:2px 0}
+  .rail .node{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;position:relative}
+  .rail .node::before{content:"";position:absolute;top:6px;left:-50%;width:100%;height:2px;background:var(--track);z-index:0}
+  .rail .node:first-child::before{display:none}
+  .rail .node.done::before,.rail .node.curr::before{background:var(--accent)}
+  .rail .dot{width:13px;height:13px;border-radius:50%;background:var(--track);border:2px solid transparent;z-index:1;transition:.2s var(--ease)}
+  .rail .node.done .dot{background:var(--accent)}
+  .rail .node.curr .dot{background:var(--surface);border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+  .rail .nlabel{font-size:9.5px;font-weight:600;letter-spacing:.02em;color:var(--text-faint);text-align:center;line-height:1.2}
+  .rail .node.curr .nlabel{color:var(--accent)}
+  .rail .node.done .nlabel{color:var(--text-dim)}
+  .queuedtag{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text-faint);
+    border:1px dashed var(--border-strong);border-radius:var(--pill);padding:4px 11px;align-self:flex-start}
+
+  .factline{display:flex;flex-wrap:wrap;gap:8px}
+  .fact{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text-dim);
+    background:var(--surface-2);border:1px solid var(--border);border-radius:var(--pill);padding:5px 11px}
+  .fact .k{color:var(--text-faint)}
+  .fact.due-soon{color:var(--med);border-color:var(--med-bd)}
+  .fact.overdue{color:var(--high);border-color:var(--high-bd)}
+
+  /* For Dave panel */
+  .dave{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:15px;margin-top:auto}
+  .dave.need{border-color:var(--accent-soft);background:linear-gradient(180deg,var(--accent-soft),var(--surface-2))}
+  .dave-head{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+  html[data-mode="light"] .dave-head{color:var(--brand-600)}
+  .dave-head .for{color:var(--text-faint)}
+  .dave-act{font-size:14.5px;font-weight:600;color:var(--text);margin-top:9px;line-height:1.4}
+  .dave-inst{font-size:13px;color:var(--text-dim);margin-top:6px;line-height:1.5}
+  .dave-btns{display:flex;flex-wrap:wrap;gap:9px;margin-top:13px}
+  .btn{display:inline-flex;align-items:center;gap:7px;border-radius:var(--radius-xs);padding:9px 13px;font-size:13px;font-weight:600;border:1px solid var(--border);transition:.16s var(--ease);text-decoration:none}
+  .btn.primary{background:var(--accent);color:#fff;border-color:transparent}
+  html[data-mode="dark"] .btn.primary{color:#0a0e14}
+  .btn.primary:hover{filter:brightness(1.08);transform:translateY(-1px)}
+  .btn.ghost{background:transparent;color:var(--text-dim)}
+  .btn.ghost:hover{border-color:var(--border-strong);color:var(--text);transform:translateY(-1px)}
+  .btn.copied{color:var(--shamrock-light);border-color:var(--low-bd)}
+  html[data-mode="light"] .btn.copied{color:var(--shamrock-dark)}
+  .prompt{margin-top:11px;display:none}
+  .prompt.open{display:block}
+  .prompt pre{font-family:var(--font-mono);font-size:12px;line-height:1.55;color:var(--text-dim);
+    background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-xs);padding:12px;white-space:pre-wrap;word-break:break-word;max-height:220px;overflow:auto}
+
+  /* ===================== Footer ===================== */
+  footer{margin-top:50px;padding-top:26px;border-top:1px solid var(--border)}
+  .foot-row{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
+  .foot-logo img{height:34px;width:auto;display:var(--logo-display)}
+  .foot-logo .dark-only{display:none}
+  html[data-mode="dark"] .foot-logo .dark-only{display:block}
+  html[data-mode="dark"] .foot-logo .light-only{display:none}
+  .copy{font-size:12.5px;color:var(--text-faint)}
+  .note{margin-top:16px;font-size:12.5px;color:var(--text-faint);line-height:1.6;max-width:80ch}
+  .note b{color:var(--text-dim);font-weight:600}
+
+  .skeleton{opacity:.5}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+  @media (max-width:560px){
+    .grid{grid-template-columns:1fr}
+    .card-head{gap:12px}
+    .donut-wrap{width:88px;height:88px}
+    .donut-center .pct{font-size:20px}
+    .alert-head .when{margin-left:0;flex-basis:100%}
+  }
+  /* visually-hidden but screen-reader available */
+  .sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="topbar">
+      <div>
+        <span class="eyebrow"><span class="pulse"></span> 3Shamrocks Studio</span>
+        <h1>Projects Manager</h1>
+        <p class="sub">Every project in the studio — its place in the pipeline, how far along it is, and exactly what's waiting on <b style="color:var(--text)">you</b>.</p>
+      </div>
+      <div class="controls">
+        <button class="iconbtn" id="themeBtn" type="button" aria-label="Toggle light or dark theme"><span id="themeIc">☀︎</span> <span id="themeTxt">Light</span></button>
+      </div>
+    </div>
+    <div class="meta">
+      <span class="stamp">Last updated <b id="lastUpdated">—</b></span>
+      <span class="livechip"><span class="dot"></span> Auto-refreshing every 60s</span>
+    </div>
+  </header>
+
+  <section class="alert" id="alert" aria-label="Items that need Dave now">
+    <div class="alert-head">
+      <span class="ic">⚠️</span>
+      <h2><span class="n" id="needCount">—</span> need Dave now</h2>
+      <span class="when" id="alertWhen"></span>
+    </div>
+    <div class="alert-list" id="needList"></div>
+  </section>
+
+  <div class="seclabel"><h2>All projects</h2><span class="rule"></span></div>
+  <main class="grid" id="grid" aria-live="polite" aria-busy="true">
+    <p class="skeleton" style="color:var(--text-dim)">Loading projects…</p>
+  </main>
+
+  <footer>
+    <div class="foot-row">
+      <span class="foot-logo">
+        <img class="dark-only" src="assets/3shamrocks.png" alt="3Shamrocks Studio">
+        <img class="light-only" src="assets/3shamrocks_black.png" alt="3Shamrocks Studio">
+      </span>
+      <span class="copy">© 2026 3Shamrocks Studio · Built &amp; maintained by Claude</span>
+    </div>
+    <p class="note">
+      <b>How updates work:</b> this page re-fetches <code>data.json</code> every 60 seconds, so re-deploying updated data shows up here with a fresh timestamp and a <b>NEW</b> badge on anything that changed — no reload needed.
+      True real-time push and pop-up alerts need a backend service; that's the next phase. In the meantime the chat notifier handles real-time, and this board is always at most 60 seconds behind.
+    </p>
+  </footer>
+
+</div>
+
+<script>
+/* ===== Fallback data (used if data.json can't be fetched) ===== */
+const FALLBACK_DATA = {"updatedAt":"2026-06-21T16:30:00-04:00","projects":[{"id":"th-mvp","name":"Trashure Hunters \u2014 MVP","category":"Game","stage":"Build","pct":60,"timeline":"Apr \u2013 Jul 2026","deadline":"2026-06-27","status":"Web-playable \u00b7 native pending","needsDave":true,"priority":"high","daveAction":"Regenerate the Anthropic API key + add Firebase credentials","daveInstructions":"The exposed key must be rotated (security) and Firebase keys added so login works. Paste both into the project env, then ping me to redeploy.","link":{"url":"https://3shamrocksstudio.github.io/th-prototype/","label":"Open web prototype"},"revisionPrompt":"Update Trashure Hunters MVP: [describe the change, e.g. tweak the onboarding flow]. Keep it premium and strictly on 3S Design System tokens (no hardcoded colors), WCAG AA, mobile + desktop, and the established game look. Never fabricate the 3Shamrocks logo. Re-deploy and confirm the live URL returns 200.","updatedAt":"2026-06-21T16:30:00-04:00"},{"id":"th-website","name":"Trashure Hunters \u2014 Website","category":"Marketing site","stage":"Live","pct":90,"timeline":"May \u2013 Jun 2026","deadline":"2026-06-24","status":"Live \u00b7 domain pending","needsDave":true,"priority":"med","daveAction":"Connect the custom domain","daveInstructions":"Point the domain's DNS to GitHub Pages and add it under repo Settings \u2192 Pages \u2192 Custom domain. Send me the domain and I'll verify the CNAME + HTTPS.","link":{"url":"https://3shamrocksstudio.github.io/th-website/","label":"Open live site"},"revisionPrompt":"Update the Trashure Hunters website: [describe the change, e.g. refresh the hero copy]. Keep it premium and strictly on 3S Design System tokens (no hardcoded colors), WCAG AA, mobile + desktop. Never fabricate the 3Shamrocks logo. Re-deploy and confirm the live URL returns 200.","updatedAt":"2026-06-21T16:30:00-04:00"},{"id":"th-movie","name":"Trashure Hunters \u2014 Movie","category":"Film \u00b7 Script","stage":"Design","pct":80,"timeline":"May \u2013 Jul 2026","deadline":"2026-06-26","status":"Screenplay draft this week","needsDave":true,"priority":"med","daveAction":"Approve the screenplay draft","daveInstructions":"Read the current draft and approve, or note the scenes to revise. Once approved I lock scope and move to storyboards.","link":{"url":"https://github.com/3ShamrocksStudio/Trashure-Hunters","label":"Open script repo"},"revisionPrompt":"Revise the Trashure Hunters screenplay: [describe the change, e.g. tighten Act 2]. Keep the established tone and characters, professional formatting, and the studio's premium standard. Summarize what changed and flag anything that affects production scope.","updatedAt":"2026-06-21T16:30:00-04:00"},{"id":"shomer","name":"Shomer","category":"App \u00b7 Safety","stage":"Design","pct":75,"timeline":"May \u2013 Jul 2026","deadline":"2026-06-28","status":"UI on the real logo","needsDave":true,"priority":"med","daveAction":"Judge the UI direction","daveInstructions":"Open the preview and pick the direction you want to keep. Reply with what works and what to change and I'll refine.","link":{"url":"https://3shamrocksstudio.github.io/shomergency/","label":"Open UI preview"},"revisionPrompt":"Update Shomer: [describe the change, e.g. simplify the alert screen]. Keep it premium and strictly on 3S Design System tokens (no hardcoded colors), WCAG AA, mobile + desktop, built on the real logo. Never fabricate the 3Shamrocks logo. Re-deploy and confirm the live URL returns 200.","updatedAt":"2026-06-21T16:30:00-04:00"},{"id":"ezra","name":"Ezra \u2014 Senior Helper","category":"App \u00b7 AI","stage":"Design","pct":50,"timeline":"Jun \u2013 Aug 2026","deadline":"2026-07-03","status":"Grok rebuild","needsDave":true,"priority":"med","daveAction":"Judge the rebuild + provide a Grok key","daveInstructions":"Review the rebuilt direction, and add xAI billing so the Grok key works. Paste the key to me and I'll wire it in.","link":{"url":"https://3shamrocksstudio.github.io/senior-helper/","label":"Open rebuild preview"},"revisionPrompt":"Update Ezra (Senior Helper): [describe the change, e.g. enlarge tap targets]. Keep it premium and strictly on 3S Design System tokens (no hardcoded colors), WCAG AA, mobile + desktop, with senior-friendly legibility. Never fabricate the 3Shamrocks logo. Re-deploy and confirm the live URL returns 200.","updatedAt":"2026-06-21T16:30:00-04:00"},{"id":"ig-network","name":"IG Mascot Network","category":"Income \u00b7 Social","stage":"Build","pct":85,"timeline":"Jun 2026","deadline":"2026-06-22","status":"Goes LIVE today if accounts are set","needsDave":true,"priority":"high","daveAction":"Create the Instagram accounts + connect the scheduler","daveInstructions":"Create the mascot IG accounts and connect them to the scheduler. The moment they exist, content publishing turns on \u2014 this is the income engine.","link":{"url":"https://3shamrocksstudio.github.io/media-network-hub/","label":"Open network hub"},"revisionPrompt":"Update the IG Mascot Network hub: [describe the change, e.g. add a new mascot card]. Keep it premium and strictly on 3S Design System tokens (no hardcoded colors), WCAG AA, mobile + desktop. Never fabricate the 3Shamrocks logo. Re-deploy and confirm the live URL returns 200.","updatedAt":"2026-06-21T16:30:00-04:00"},{"id":"chore-wars","name":"Chore Wars","category":"App \u00b7 Family","stage":"Live","pct":80,"timeline":"Apr \u2013 Jun 2026","deadline":"2026-06-30","status":"Live \u00b7 needs a test pass","needsDave":true,"priority":"low","daveAction":"Run a quick test pass","daveInstructions":"Click through the core flow on your phone and note anything broken. No rush \u2014 it's already live.","link":{"url":"https://3shamrocksstudio.github.io/chore-wars/","label":"Open live app"},"revisionPrompt":"Update Chore Wars: [describe the change, e.g. fix the points tally]. Keep it premium and strictly on 3S Design System tokens (no hardcoded colors), WCAG AA, mobile + desktop. Never fabricate the 3Shamrocks logo. Re-deploy and confirm the live URL returns 200.","updatedAt":"2026-06-21T16:30:00-04:00"},{"id":"design-system","name":"3S Design System + Grok","category":"Studio \u00b7 Foundation","stage":"Build","pct":50,"timeline":"Jun \u2013 Aug 2026","deadline":"2026-07-10","status":"Token system + Grok asset pipeline","needsDave":true,"priority":"low","daveAction":"Add xAI billing so the Grok image pipeline works","daveInstructions":"The Grok key is valid but image generation is blocked until billing is added at xAI. Add credits and the asset pipeline unblocks.","link":{"url":"https://3shamrocksstudio.github.io/3s-design-system/","label":"Open style guide"},"revisionPrompt":"Update the 3S Design System: [describe the change, e.g. add a new component]. Change tokens at the right layer (0 primitives / 1 brand / 2 semantic), keep light + dark and WCAG AA, and don't break existing brands. Never fabricate the 3Shamrocks logo. Re-deploy and confirm the live URL returns 200.","updatedAt":"2026-06-21T16:30:00-04:00"},{"id":"j8nix","name":"J8NIX","category":"App","stage":"Build","pct":70,"timeline":"May \u2013 Jul 2026","deadline":"2026-07-08","status":"In active build","needsDave":false,"priority":"low","daveAction":"Nothing right now \u2014 building","daveInstructions":"No action needed. I'll surface a decision here when the build reaches the next checkpoint.","link":{"url":"https://3shamrocksstudio.github.io/j8nix/","label":"Open preview"},"revisionPrompt":"Update J8NIX: [describe the change]. Keep it premium and strictly on 3S Design System tokens (no hardcoded colors), WCAG AA, mobile + desktop. Never fabricate the 3Shamrocks logo. Re-deploy and confirm the live URL returns 200.","updatedAt":"2026-06-21T16:30:00-04:00"},{"id":"career-engine","name":"Career Engine","category":"Tool \u00b7 AI","stage":"Live","pct":90,"timeline":"Apr \u2013 Jun 2026","deadline":"2026-06-25","status":"Live \u00b7 maintained","needsDave":false,"priority":"low","daveAction":"Nothing right now \u2014 live & healthy","daveInstructions":"No action needed. Running and maintained.","link":{"url":"https://github.com/3ShamrocksStudio","label":"Open studio repos"},"revisionPrompt":"Update the Career Engine: [describe the change]. Keep it premium and strictly on 3S Design System tokens (no hardcoded colors), WCAG AA, mobile + desktop. Never fabricate the 3Shamrocks logo. Re-deploy and confirm the live URL returns 200.","updatedAt":"2026-06-21T16:30:00-04:00"},{"id":"brand-kit","name":"AI Brand Kit Store","category":"Income \u00b7 Store","stage":"Live","pct":100,"timeline":"Jun 2026","deadline":"2026-06-19","status":"Shipped","needsDave":false,"priority":"low","daveAction":"Nothing \u2014 shipped","daveInstructions":"No action needed. Live and complete.","link":{"url":"https://3shamrocksstudio.github.io/media-network-hub/kit.html","label":"Open the store"},"revisionPrompt":"Update the AI Brand Kit Store: [describe the change, e.g. add a new kit]. Keep it premium and strictly on 3S Design System tokens (no hardcoded colors), WCAG AA, mobile + desktop. Never fabricate the 3Shamrocks logo. Re-deploy and confirm the live URL returns 200.","updatedAt":"2026-06-19T12:00:00-04:00"},{"id":"milo","name":"Milo","category":"App","stage":"Queued","pct":40,"timeline":"Jul \u2013 Sep 2026","deadline":"2026-07-15","status":"Queued","needsDave":false,"priority":"low","daveAction":"Nothing yet \u2014 queued","daveInstructions":"No action needed. Parked in the queue; I'll pick it up after the higher-priority launches.","link":{"url":"https://3shamrocksstudio.github.io/milo-app/","label":"Open preview"},"revisionPrompt":"Update Milo: [describe the change]. Keep it premium and strictly on 3S Design System tokens (no hardcoded colors), WCAG AA, mobile + desktop. Never fabricate the 3Shamrocks logo. Re-deploy and confirm the live URL returns 200.","updatedAt":"2026-06-21T16:30:00-04:00"},{"id":"rent-fairness","name":"Rent-Fairness","category":"R&D \u00b7 Concept","stage":"Concept","pct":30,"timeline":"Jun \u2013 Sep 2026","deadline":"2026-07-31","status":"Concept / R&D","needsDave":false,"priority":"low","daveAction":"Nothing yet \u2014 researching","daveInstructions":"No action needed. Exploring the concept; I'll bring a direction to judge when it's ready.","link":{"url":"https://github.com/3ShamrocksStudio","label":"Open studio repos"},"revisionPrompt":"Shape the Rent-Fairness concept: [describe the direction, e.g. focus on the renter dispute flow]. Keep it premium and aligned to the 3S Design System token standard from day one. Never fabricate the 3Shamrocks logo. Summarize the concept and the next build step.","updatedAt":"2026-06-21T16:30:00-04:00"},{"id":"studio-site","name":"3Shamrocks.com","category":"Studio \u00b7 Site","stage":"Queued","pct":30,"timeline":"Jul \u2013 Aug 2026","deadline":"2026-07-20","status":"Queued","needsDave":false,"priority":"low","daveAction":"Nothing yet \u2014 queued","daveInstructions":"No action needed. The studio site is queued behind the product launches.","link":{"url":"https://3shamrocksstudio.github.io/3s-design-system/","label":"Open design system"},"revisionPrompt":"Update 3Shamrocks.com: [describe the change]. Keep it premium and strictly on 3S Design System tokens (no hardcoded colors), WCAG AA, mobile + desktop. Never fabricate the 3Shamrocks logo. Re-deploy and confirm the live URL returns 200.","updatedAt":"2026-06-21T16:30:00-04:00"}]};
+
+const STAGES = [
+  {name:"Concept", color:"var(--st-concept)"},
+  {name:"Design",  color:"var(--st-design)"},
+  {name:"Build",   color:"var(--st-build)"},
+  {name:"Test",    color:"var(--st-test)"},
+  {name:"Deploy",  color:"var(--st-deploy)"},
+  {name:"Live",    color:"var(--st-live)"}
+];
+const SEG = 360 / STAGES.length;
+
+/* ---- helpers ---- */
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+
+function relTime(iso){
+  const then=new Date(iso).getTime(), now=Date.now(), d=Math.round((now-then)/1000);
+  if(isNaN(then)) return "—";
+  if(d<60) return "just now";
+  if(d<3600) return Math.floor(d/60)+" min ago";
+  if(d<86400) {const h=Math.floor(d/3600);return h+(h===1?" hour ago":" hours ago");}
+  const days=Math.floor(d/86400); if(days<8) return days+(days===1?" day ago":" days ago");
+  return new Date(iso).toLocaleDateString(undefined,{month:"short",day:"numeric"});
+}
+function fmtDate(iso){return new Date(iso+"T00:00:00").toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"});}
+function dueMeta(iso){
+  const due=new Date(iso+"T23:59:59").getTime(), now=Date.now();
+  const days=Math.ceil((due-now)/86400000);
+  if(days<0) return {cls:"overdue", txt:fmtDate(iso)+" · overdue"};
+  if(days===0) return {cls:"due-soon", txt:fmtDate(iso)+" · today"};
+  if(days<=4) return {cls:"due-soon", txt:fmtDate(iso)+" · in "+days+"d"};
+  return {cls:"", txt:fmtDate(iso)};
+}
+
+/* ---- donut: 6 equal stage-coloured segments, filled to pct ---- */
+function donutGradient(pct){
+  const filled = Math.max(0,Math.min(100,pct))/100*360;
+  const stops=[];
+  for(let i=0;i<STAGES.length;i++){
+    const start=i*SEG, end=(i+1)*SEG, col=STAGES[i].color;
+    if(end<=filled){ stops.push(`${col} ${start}deg`,`${col} ${end}deg`); }
+    else if(start<filled){ stops.push(`${col} ${start}deg`,`${col} ${filled}deg`,`var(--track) ${filled}deg`,`var(--track) ${end}deg`); }
+    else { stops.push(`var(--track) ${start}deg`,`var(--track) ${end}deg`); }
+  }
+  return `conic-gradient(from -90deg, ${stops.join(",")})`;
+}
+
+function railHTML(stage){
+  const curr = STAGES.findIndex(s=>s.name===stage);
+  if(curr===-1){ // queued / unknown stage
+    return `<div class="queuedtag">⏸ Queued — not yet started</div>`;
+  }
+  return `<div class="rail" role="list" aria-label="Pipeline stage: ${esc(stage)}">`+
+    STAGES.map((s,i)=>{
+      const cls = i<curr?"done":(i===curr?"curr":"");
+      const aria = i<curr?" (done)":(i===curr?" (current)":"");
+      return `<div class="node ${cls}" role="listitem"><span class="dot"></span><span class="nlabel">${s.name}${i===curr?'<span class="sr">'+aria+'</span>':''}</span></div>`;
+    }).join("")+`</div>`;
+}
+
+function cardHTML(p,isNew){
+  const due = dueMeta(p.deadline);
+  const stageLabel = STAGES.some(s=>s.name===p.stage) ? p.stage : "Queued";
+  return `<article class="card" id="card-${esc(p.id)}" data-id="${esc(p.id)}">
+    <div class="card-head">
+      <div class="ch-text">
+        <div class="cat">${esc(p.category)}</div>
+        <div class="cname">${esc(p.name)} ${isNew?'<span class="newbadge">New</span>':''}</div>
+        <div class="cstatus">${esc(p.status)}</div>
+      </div>
+      <div class="donut-wrap" role="img" aria-label="${p.pct}% complete, current stage ${esc(stageLabel)}">
+        <div class="donut" style="background:${donutGradient(p.pct)}"></div>
+        <div class="donut-center"><span class="pct">${p.pct}%</span><span class="lbl">${esc(stageLabel)}</span></div>
+      </div>
+    </div>
+
+    ${railHTML(p.stage)}
+
+    <div class="factline">
+      <span class="fact"><span class="k">Timeline</span> ${esc(p.timeline)}</span>
+      <span class="fact ${due.cls}"><span class="k">Deadline</span> ${esc(due.txt)}</span>
+    </div>
+
+    <div class="dave ${p.needsDave?'need':''}">
+      <div class="dave-head"><span class="for">For Dave</span> · ${p.needsDave?'Needs you':'No action needed'}</div>
+      <div class="dave-act">${esc(p.daveAction)}</div>
+      <div class="dave-inst">${esc(p.daveInstructions)}</div>
+      <div class="dave-btns">
+        <a class="btn primary" href="${esc(p.link.url)}" target="_blank" rel="noopener">${esc(p.link.label)} ↗</a>
+        <button class="btn ghost" type="button" data-toggle="${esc(p.id)}" aria-expanded="false" aria-controls="prompt-${esc(p.id)}">⌁ Revision prompt</button>
+        <button class="btn ghost" type="button" data-copy="${esc(p.id)}">⧉ Copy prompt</button>
+      </div>
+      <div class="prompt" id="prompt-${esc(p.id)}"><pre>${esc(p.revisionPrompt)}</pre></div>
+    </div>
+  </article>`;
+}
+
+/* ---- NEW detection via localStorage diff ---- */
+const SEEN_KEY="3spm:seen";
+function loadSeen(){ try{return JSON.parse(localStorage.getItem(SEEN_KEY))||null;}catch(e){return null;} }
+function saveSeen(map){ try{localStorage.setItem(SEEN_KEY,JSON.stringify(map));}catch(e){} }
+
+function render(data){
+  const grid=document.getElementById("grid");
+  const projects=data.projects||[];
+  const seen=loadSeen();          // null on first ever visit
+  const nextSeen={};
+  const newIds=new Set();
+  projects.forEach(p=>{
+    nextSeen[p.id]=p.updatedAt;
+    if(seen && (!(p.id in seen) || seen[p.id]!==p.updatedAt)) newIds.add(p.id);
+  });
+
+  // order: needs-Dave first (by priority), then the rest
+  const prioRank={high:0,med:1,low:2};
+  const ordered=[...projects].sort((a,b)=>{
+    if(a.needsDave!==b.needsDave) return a.needsDave?-1:1;
+    if(a.needsDave) return (prioRank[a.priority]??3)-(prioRank[b.priority]??3);
+    return b.pct-a.pct;
+  });
+
+  grid.innerHTML = ordered.map(p=>cardHTML(p,newIds.has(p.id))).join("");
+  grid.setAttribute("aria-busy","false");
+
+  // Needs Dave Now banner
+  const needs=projects.filter(p=>p.needsDave).sort((a,b)=>(prioRank[a.priority]??3)-(prioRank[b.priority]??3));
+  document.getElementById("needCount").textContent = needs.length===0?"0 items":(needs.length+(needs.length===1?" item":" items"));
+  const list=document.getElementById("needList");
+  if(needs.length===0){
+    list.innerHTML=`<p class="allclear">🎉 You're all caught up — nothing is blocked on you right now.</p>`;
+  }else{
+    list.innerHTML=needs.map(p=>`<button class="needchip" type="button" data-jump="${esc(p.id)}">
+      <span class="pri ${esc(p.priority)}"></span><b>${esc(p.name)}</b> <span class="act">— ${esc(p.daveAction)}</span></button>`).join("");
+  }
+
+  // timestamps
+  document.getElementById("lastUpdated").textContent = relTime(data.updatedAt);
+  document.getElementById("lastUpdated").title = new Date(data.updatedAt).toLocaleString();
+  document.getElementById("alertWhen").textContent = "as of "+relTime(data.updatedAt);
+
+  // flash changed cards
+  if(seen) newIds.forEach(id=>{ const el=document.getElementById("card-"+id); if(el) el.classList.add("flash"); });
+
+  saveSeen(nextSeen);
+  wireCards();
+}
+
+/* ---- interactions ---- */
+function wireCards(){
+  document.querySelectorAll("[data-toggle]").forEach(b=>b.onclick=()=>{
+    const box=document.getElementById("prompt-"+b.dataset.toggle);
+    const open=box.classList.toggle("open");
+    b.setAttribute("aria-expanded",open);
+  });
+  document.querySelectorAll("[data-copy]").forEach(b=>b.onclick=async()=>{
+    const box=document.getElementById("prompt-"+b.dataset.copy);
+    const txt=box.querySelector("pre").textContent;
+    try{ await navigator.clipboard.writeText(txt); }
+    catch(e){ const t=document.createElement("textarea");t.value=txt;document.body.appendChild(t);t.select();document.execCommand("copy");t.remove(); }
+    const old=b.innerHTML; b.innerHTML="✓ Copied"; b.classList.add("copied");
+    setTimeout(()=>{b.innerHTML=old;b.classList.remove("copied");},1600);
+  });
+  document.querySelectorAll("[data-jump]").forEach(b=>b.onclick=()=>{
+    const el=document.getElementById("card-"+b.dataset.jump);
+    if(el){ el.scrollIntoView({behavior:"smooth",block:"center"}); el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash"); }
+  });
+}
+
+/* ---- theme ---- */
+function applyTheme(mode){
+  document.documentElement.setAttribute("data-mode",mode);
+  document.getElementById("themeIc").textContent = mode==="dark"?"☀︎":"☾";
+  document.getElementById("themeTxt").textContent = mode==="dark"?"Light":"Dark";
+  document.querySelector('meta[name="theme-color"]').setAttribute("content", mode==="dark"?"#0c1117":"#f4f6f9");
+  try{localStorage.setItem("3spm:theme",mode);}catch(e){}
+}
+document.getElementById("themeBtn").onclick=()=>{
+  applyTheme(document.documentElement.getAttribute("data-mode")==="dark"?"light":"dark");
+};
+(function(){ let t="dark"; try{t=localStorage.getItem("3spm:theme")||"dark";}catch(e){} applyTheme(t); })();
+
+/* ---- data load + auto-refresh ---- */
+async function loadData(){
+  try{
+    const res=await fetch("data.json?t="+Date.now(),{cache:"no-store"});
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    const data=await res.json();
+    if(!data.projects||!data.projects.length) throw new Error("empty");
+    render(data);
+  }catch(err){
+    if(FALLBACK_DATA.projects.length){ render(FALLBACK_DATA); }
+    else { document.getElementById("grid").innerHTML='<p style="color:var(--text-dim)">Could not load project data.</p>'; }
+    console.warn("[3SPM] using fallback:",err.message);
+  }
+}
+loadData();
+setInterval(loadData, 60000);
+</script>
+</body>
+</html>
